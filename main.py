@@ -3,7 +3,6 @@ from repositories import LoanRepository, BookRepository, MemberRepository
 from service import LibraryService
 from datetime import date
 
-
 def demo():
     book1 = Book('123231', 'zycie', 'Szymon', 2100)
     book2 = Book('we1234', 'ciepienie', 'Bogdan', 2200)

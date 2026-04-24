@@ -2,9 +2,6 @@ import uuid
 from models import Book, Member, Loan 
 from repositories import LoanRepository, MemberRepository, BookRepository
 
-
-
-
 class LibraryService:
     def __init__(self, loan_repository : LoanRepository, member_repo : MemberRepository, book_repo : BookRepository): 
         self.loan_repo = loan_repository
@@ -40,6 +37,17 @@ class LibraryService:
         loan.returned_date = return_date
         return loan 
 
+    def extend_due_date(self, loan_id, new_due_date):
+        loan_ = self.loan_repo.get_by_id(loan_id)
+        if loan_ is None: 
+            raise ValueError(f'Loan id: {loan_id} nie istnieje!')
+        if not loan_.is_active():
+            raise ValueError('Ksiązka została juz oddana!')
+        if loan_.due_date >= new_due_date:
+            raise ValueError('Podana data jest nieprawidłowa!')
+        loan_.due_date = new_due_date
+        return loan_
+
     def get_overdue_loans(self, current_date):
         overdue_loans = self.loan_repo.get_overdue(current_date)
         return overdue_loans
@@ -52,9 +60,42 @@ class LibraryService:
         member_loans = self.loan_repo.get_by_member(member_id)
         return [loan for loan in member_loans if loan.is_overdue(current_date)]
     
+    def get_active_loans_by_member(self, member_id):
+        member_loans = self.loan_repo.get_by_member(member_id)
+        return [x for x in member_loans if x.is_active()]
+    
+    def remove_book(self, book_id):
+        book_ = self.book_repo.get_by_id(book_id)
+        if book_ is None:
+            raise ValueError(f'Ksiazka o id: {book_id} nie istnieje!')
+        loans_ = self.loan_repo.get_by_book(book_.book_id)
+        if any(l.is_active() for l in loans_):
+            raise ValueError('Ksiazka wypozyczona! Nie mozna usunac!')
+        self.book_repo.remove(book_id)
+
+    def remove_member(self, member_id):
+        member_ = self.member_repo.get_by_id(member_id)
+        if member_ is None:
+            raise ValueError(f'Member o id: {member_id} nie istnieje!')
+        active_member_loans = self.get_active_loans_by_member(member_id)
+        if active_member_loans:
+            raise ValueError('Użytkownik ma aktywne wypożyczenia!')
+        self.member_repo.remove(member_id)
+
+    def search_books_by_title(self, phrase):
+        return self.book_repo.search_by_title(phrase)
+        
     def is_book_available(self, book_id): 
         book_loans = self.loan_repo.get_by_book(book_id)
         for loan in book_loans:
             if loan.is_active():
                 return False 
         return True 
+    
+    def get_statistics(self, current_date):
+        return {
+            'total_books': len(self.book_repo.get_all()),
+            'total_members': len(self.member_repo.get_all()),
+            'active_loans': len(self.loan_repo.get_active_loan()),
+            'overdue_loans': len(self.loan_repo.get_overdue(current_date))
+        }

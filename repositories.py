@@ -1,6 +1,5 @@
 from models import Book, Loan, Member
 
-
 class LoanRepository: 
     def __init__(self):
         self.loans = []
@@ -25,7 +24,6 @@ class LoanRepository:
             if x.loan_id == loan_id:
                 return x
         return None
-    
     
 class BookRepository:
     def __init__(self):

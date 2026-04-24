@@ -1,6 +1,8 @@
 import pytest
-from library import Book, Member, LoanRepository, LibraryService, BookRepository, MemberRepository
 from datetime import date
+from models import Book, Loan, Member
+from repositories import LoanRepository, MemberRepository, BookRepository
+from service import LibraryService
 
 @pytest.fixture
 def setup():
