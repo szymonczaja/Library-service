@@ -187,7 +187,7 @@ class SQLiteLoanRepository:
         except Error as e:
             print(f'ERROR: {e}')
 
-    def get_active_loans(self):
+    def get_active_loan(self):
         query = '''
         SELECT loan_id, book_id, member_id, loan_date, due_date, returned_date
         FROM Loan
@@ -202,7 +202,7 @@ class SQLiteLoanRepository:
         except Error as e:
             print(f'ERROR: {e}')
 
-    def get_overdue_loans(self, current_date):
+    def get_overdue(self, current_date):
         query = '''
         SELECT loan_id, book_id, member_id, loan_date, due_date, returned_date
         FROM Loan
@@ -210,7 +210,7 @@ class SQLiteLoanRepository:
         '''
         try:
             cursor = self.conn.cursor()
-            cursor.execute(query)
+            cursor.execute(query, (str(current_date), ))
             rows = cursor.fetchall()
             overdue_loans = [Loan(row['loan_id'], row['book_id'], row['member_id'], date.fromisoformat(row['loan_date']), date.fromisoformat(row['due_date']), date.fromisoformat(row['returned_date']) if row['returned_date'] else None) for row in rows]
             return overdue_loans
@@ -227,6 +227,8 @@ class SQLiteLoanRepository:
             cursor = self.conn.cursor()
             cursor.execute(query, (loan_id,))
             row = cursor.fetchone()
+            if row is None:
+                return None
             return Loan(row['loan_id'], row['book_id'], row['member_id'], date.fromisoformat(row['loan_date']), date.fromisoformat(row['due_date']), date.fromisoformat(row['returned_date']) if row['returned_date'] else None)
         except Error as e:
             print(f'ERROR: {e}')
