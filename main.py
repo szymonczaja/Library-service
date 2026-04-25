@@ -22,7 +22,6 @@ def demo():
     for l in library.get_overdue_loans(date.today()):
         print(l)
 
-    # historia membera
     print("\nHistoria Krisa:")
     for l in library.member_history('adasdasd'):
         print(l)
