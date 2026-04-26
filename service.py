@@ -35,7 +35,8 @@ class LibraryService:
         if loan is None: 
             raise ValueError(f'Brak książki o podanym ID: {loan_id}')
         loan.returned_date = return_date
-        return loan 
+        self.loan_repo.mark_as_returned(loan_id, return_date)
+        return loan
 
     def extend_due_date(self, loan_id, new_due_date):
         loan_ = self.loan_repo.get_by_id(loan_id)
@@ -46,6 +47,7 @@ class LibraryService:
         if loan_.due_date >= new_due_date:
             raise ValueError('Podana data jest nieprawidłowa!')
         loan_.due_date = new_due_date
+        self.loan_repo.update_due_date(loan_id, new_due_date)
         return loan_
 
     def get_overdue_loans(self, current_date):
@@ -73,6 +75,13 @@ class LibraryService:
             raise ValueError('Ksiazka wypozyczona! Nie mozna usunac!')
         self.book_repo.remove(book_id)
 
+    def add_book(self, book : Book):
+        book_ = self.book_repo.get_by_id(book.book_id)
+        if book_ is not None:
+            raise ValueError(f'Książka o ID: {book.book_id} już istnieje!')
+        self.book_repo.add(book)
+        return book
+
     def remove_member(self, member_id):
         member_ = self.member_repo.get_by_id(member_id)
         if member_ is None:
@@ -81,6 +90,13 @@ class LibraryService:
         if active_member_loans:
             raise ValueError('Użytkownik ma aktywne wypożyczenia!')
         self.member_repo.remove(member_id)
+
+    def add_member(self, member : Member):
+        member_ = self.member_repo.get_by_id(member.member_id)
+        if member_ is not None:
+            raise ValueError(f'Member o ID: {member.member_id} już istnieje!')
+        self.member_repo.add(member)
+        return member
 
     def search_books_by_title(self, phrase):
         return self.book_repo.search_by_title(phrase)

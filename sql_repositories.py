@@ -71,7 +71,6 @@ class SQLiteBookRepository:
         except Error as e:
             print(f'ERROR: {e}')
             
-
 class SQLiteMemberRepository:
     def __init__(self, conn):
         self.conn = conn 
@@ -102,6 +101,7 @@ class SQLiteMemberRepository:
             return None
         except Error as e: 
             print(f'ERROR: {e}')
+            return None
 
     def find_by_email(self, email):
         query = '''
@@ -116,6 +116,7 @@ class SQLiteMemberRepository:
             return None
         except Error as e: 
             print(f'ERROR: {e}')
+            return None
 
     def get_all(self):
         query = '''
@@ -128,6 +129,7 @@ class SQLiteMemberRepository:
             return [Member(row['member_id'], row['name'], row['email']) for row in rows]
         except Error as e:
             print(f'ERROR: {e}')
+            return []
 
     def remove(self, member_id):
         query = '''
@@ -171,6 +173,7 @@ class SQLiteLoanRepository:
             return member_loans
         except Error as e:
             print(f'ERROR: {e}')
+            return []
 
     def get_by_book(self, book_id):
         query = '''
@@ -186,6 +189,7 @@ class SQLiteLoanRepository:
             return book_loans
         except Error as e:
             print(f'ERROR: {e}')
+            return []
 
     def get_active_loan(self):
         query = '''
@@ -201,6 +205,7 @@ class SQLiteLoanRepository:
             return active_loans
         except Error as e:
             print(f'ERROR: {e}')
+            return []
 
     def get_overdue(self, current_date):
         query = '''
@@ -216,6 +221,7 @@ class SQLiteLoanRepository:
             return overdue_loans
         except Error as e:
             print(f'ERROR: {e}')
+            return []
 
     def get_by_id(self, loan_id):
         query = '''
@@ -231,4 +237,28 @@ class SQLiteLoanRepository:
                 return None
             return Loan(row['loan_id'], row['book_id'], row['member_id'], date.fromisoformat(row['loan_date']), date.fromisoformat(row['due_date']), date.fromisoformat(row['returned_date']) if row['returned_date'] else None)
         except Error as e:
+            print(f'ERROR: {e}')
+            return None
+        
+    def mark_as_returned(self, loan_id, returned_date):
+        query = '''
+        UPDATE Loan SET returned_date = ? WHERE loan_id = ?
+        '''
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(query, (returned_date, loan_id))
+            self.conn.commit()
+        except Error as e: 
+            print(f'ERROR: {e}')
+            return None 
+        
+    def update_due_date(self, loan_id, due_date):
+        query = '''
+        UPDATE Loan SET due_date = ? WHERE loan_id = ?
+        '''
+        try: 
+            cursor = self.conn.cursor()
+            cursor.execute(query, (due_date, loan_id))
+            self.conn.commit()
+        except Error as e: 
             print(f'ERROR: {e}')

@@ -35,6 +35,20 @@ class ReturnRequest(BaseModel):
     loan_id: str
     return_date: date
 
+class CheckoutCreate(BaseModel):
+    book_id: str
+    member_id: str
+    loan_date: date
+    due_date: date
+
+class ReturnBookRequest(BaseModel):
+    loan_id: str
+    return_date: date
+
+class ExtendDueDateRequest(BaseModel):
+    loan_id: str
+    new_due_date: date
+
 library_service: Optional[LibraryService] = None
 
 @asynccontextmanager
@@ -56,3 +70,130 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+@app.post('/books')
+def add_book(book : BookCreate):
+    try:
+        book_ = Book(book.book_id, book.title, book.author, book.year)
+        library_service.add_book(book_)
+        return book_
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get('/books')
+def return_all_books():
+    try: 
+        all_books = library_service.book_repo.get_all()
+        return all_books
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get('/books/search')
+def search_by_book_title(phrase : str):
+    books = library_service.search_books_by_title(phrase)
+    return books
+
+@app.get('/books/{book_id}')
+def get_book_by_id(book_id : str):
+    book = library_service.book_repo.get_by_id(book_id)
+    if book is None:
+        raise HTTPException(status_code=404, detail='Książka nie istnieje!')
+    return book
+
+@app.delete('/books/{book_id}')
+def delete_book(book_id : str):
+    try:
+        library_service.remove_book(book_id)
+        return 'Książka usunięta pomyślnie!'
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post('/members')
+def add_member(member : MemberCreate):
+    try:
+        member_ = Member(member.member_id, member.name, member.email)
+        library_service.add_member(member_)
+        return member_
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+@app.get('/members/{member_id}')
+def get_member_by_id(member_id : str):
+    member = library_service.member_repo.get_by_id(member_id)
+    if member is None:
+        raise HTTPException(status_code=404, detail='Member nie istnieje!')
+    return member 
+
+@app.delete('/members/{member_id}')
+def delete_member(member_id : str):
+    try: 
+        library_service.remove_member(member_id)
+        return 'Member usuniety pomyslnie!'
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post('/checkout')
+def checkout(book : BookCreate, member : MemberCreate, loan_date, due_date):
+    try:
+        loan = library_service.checkout(book, member, loan_date, due_date)
+        return loan 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+
+@app.post('/return')
+def return_book(data: ReturnBookRequest):
+    try:
+        loan = library_service.return_book(data.loan_id, data.return_date)
+        return loan
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+@app.post('/loans/extend')
+def extend_due_date(data: ExtendDueDateRequest):
+    try:
+        loan = library_service.extend_due_date(data.loan_id, data.new_due_date)
+        return loan
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+@app.get('/loans/active')
+def get_active_loans():
+    try:
+        return library_service.loan_repo.get_active_loan()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+@app.get('/loans/overdue')
+def get_overdue_loans(current_date: date):
+    try:
+        return library_service.get_overdue_loans(current_date)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+@app.get('/members/{member_id}/history')
+def get_member_history(member_id: str):
+    try:
+        return library_service.member_history(member_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+@app.get('/members/{member_id}/loans/active')
+def get_active_loans_by_member(member_id: str):
+    try:
+        return library_service.get_active_loans_by_member(member_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+@app.get('/members/{member_id}/loans/overdue')
+def get_member_overdue_loans(member_id: str, current_date: date):
+    try:
+        return library_service.get_member_overdue_loans(member_id, current_date)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+@app.get('/stats')
+def get_stats(current_date: date):
+    try:
+        return library_service.get_statistics(current_date)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
