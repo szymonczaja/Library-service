@@ -1,10 +1,8 @@
 from contextlib import asynccontextmanager
 from datetime import date
 from typing import Optional
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, EmailStr
-
 from database import db_init
 from sql_repositories import (
     SQLiteBookRepository,
@@ -25,16 +23,6 @@ class MemberCreate(BaseModel):
     name: str
     email: EmailStr
 
-class CheckoutRequest(BaseModel):
-    book_id: str
-    member_id: str
-    loan_date: date
-    due_date: date
-
-class ReturnRequest(BaseModel):
-    loan_id: str
-    return_date: date
-
 class CheckoutCreate(BaseModel):
     book_id: str
     member_id: str
@@ -53,10 +41,6 @@ library_service: Optional[LibraryService] = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Inicjalizacja bazy, repo i serwisu raz na start aplikacji.
-    Zamykanie połączenia przy wyłączaniu. [web:1371]
-    """
     global library_service
     conn = db_init("library_database.db")
     book_repo = SQLiteBookRepository(conn)
@@ -68,10 +52,10 @@ async def lifespan(app: FastAPI):
     finally:
         conn.close()
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(description='Library',lifespan=lifespan)
 
 @app.post('/books')
-def add_book(book : BookCreate):
+def add_book(book: BookCreate):
     try:
         book_ = Book(book.book_id, book.title, book.author, book.year)
         library_service.add_book(book_)
@@ -81,64 +65,64 @@ def add_book(book : BookCreate):
 
 @app.get('/books')
 def return_all_books():
-    try: 
-        all_books = library_service.book_repo.get_all()
-        return all_books
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return library_service.book_repo.get_all()
 
 @app.get('/books/search')
-def search_by_book_title(phrase : str):
-    books = library_service.search_books_by_title(phrase)
-    return books
+def search_by_book_title(phrase: str):
+    return library_service.search_books_by_title(phrase)
+
 
 @app.get('/books/{book_id}')
-def get_book_by_id(book_id : str):
+def get_book_by_id(book_id: str):
     book = library_service.book_repo.get_by_id(book_id)
     if book is None:
         raise HTTPException(status_code=404, detail='Książka nie istnieje!')
     return book
 
 @app.delete('/books/{book_id}')
-def delete_book(book_id : str):
+def delete_book(book_id: str):
     try:
         library_service.remove_book(book_id)
-        return 'Książka usunięta pomyślnie!'
+        return {'message': 'Książka usunięta pomyślnie!'}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post('/members')
-def add_member(member : MemberCreate):
+def add_member(member: MemberCreate):
     try:
         member_ = Member(member.member_id, member.name, member.email)
         library_service.add_member(member_)
         return member_
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
 @app.get('/members/{member_id}')
-def get_member_by_id(member_id : str):
+def get_member_by_id(member_id: str):
     member = library_service.member_repo.get_by_id(member_id)
     if member is None:
         raise HTTPException(status_code=404, detail='Member nie istnieje!')
-    return member 
+    return member
 
 @app.delete('/members/{member_id}')
-def delete_member(member_id : str):
-    try: 
+def delete_member(member_id: str):
+    try:
         library_service.remove_member(member_id)
-        return 'Member usuniety pomyslnie!'
+        return {'message': 'Member usunięty pomyślnie!'}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post('/checkout')
-def checkout(book : BookCreate, member : MemberCreate, loan_date, due_date):
+def checkout(data: CheckoutCreate):
     try:
-        loan = library_service.checkout(book, member, loan_date, due_date)
-        return loan 
+        loan = library_service.checkout_by_ids(
+            data.book_id,
+            data.member_id,
+            data.loan_date,
+            data.due_date
+        )
+        return loan
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
 
 @app.post('/return')
 def return_book(data: ReturnBookRequest):
@@ -147,7 +131,7 @@ def return_book(data: ReturnBookRequest):
         return loan
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
 @app.post('/loans/extend')
 def extend_due_date(data: ExtendDueDateRequest):
     try:
@@ -155,45 +139,27 @@ def extend_due_date(data: ExtendDueDateRequest):
         return loan
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
 @app.get('/loans/active')
 def get_active_loans():
-    try:
-        return library_service.loan_repo.get_active_loan()
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    
+    return library_service.loan_repo.get_active_loan()
+
 @app.get('/loans/overdue')
 def get_overdue_loans(current_date: date):
-    try:
-        return library_service.get_overdue_loans(current_date)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    
+    return library_service.get_overdue_loans(current_date)
+
 @app.get('/members/{member_id}/history')
 def get_member_history(member_id: str):
-    try:
-        return library_service.member_history(member_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    
+    return library_service.member_history(member_id)
+
 @app.get('/members/{member_id}/loans/active')
 def get_active_loans_by_member(member_id: str):
-    try:
-        return library_service.get_active_loans_by_member(member_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    
+    return library_service.get_active_loans_by_member(member_id)
+
 @app.get('/members/{member_id}/loans/overdue')
 def get_member_overdue_loans(member_id: str, current_date: date):
-    try:
-        return library_service.get_member_overdue_loans(member_id, current_date)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    
+    return library_service.get_member_overdue_loans(member_id, current_date)
+
 @app.get('/stats')
 def get_stats(current_date: date):
-    try:
-        return library_service.get_statistics(current_date)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return library_service.get_statistics(current_date)

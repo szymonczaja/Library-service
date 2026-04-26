@@ -10,9 +10,13 @@ class LibraryService:
 
     def checkout_by_ids(self, book_id : str, member_id, loan_date, due_date):
         book_ = self.book_repo.get_by_id(book_id)
+        if book_ is None:
+            raise ValueError('Książka nie istnieje!')
         member_ =  self.member_repo.get_by_id(member_id)
-        new_loan = self.checkout(book_, member_, loan_date, due_date)
-        return new_loan
+        if member_ is None:
+            raise ValueError('Member nie istnieje!')
+        return self.checkout(book_, member_, loan_date, due_date)
+        
 
     def checkout(self, book : Book, member : Member, loan_date, due_date):
         book_ = self.book_repo.get_by_id(book.book_id)
