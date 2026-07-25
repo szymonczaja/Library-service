@@ -24,6 +24,16 @@ class LoanRepository:
             if x.loan_id == loan_id:
                 return x
         return None
+
+    def mark_as_returned(self, loan_id, returned_date): 
+        loan = self.get_by_id(loan_id)
+        if loan:
+            loan.returned_date = returned_date
+
+    def update_due_date(self, loan_id, due_date):
+        loan = self.get_by_id(loan_id) 
+        if loan:
+            loan.due_date = due_date
     
 class BookRepository:
     def __init__(self):
